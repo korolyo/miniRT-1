@@ -6,7 +6,7 @@
 /*   By: zurag <zurag@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/02/07 19:47:20 by zurag             #+#    #+#             */
-/*   Updated: 2022/03/09 20:43:59 by zurag            ###   ########.fr       */
+/*   Updated: 2022/03/14 17:55:34 by zurag            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,6 @@
 # include "vector.h"
 # include "sphere.h"
 # include "camera.h"
-//# include "scene.h"
 # include "view_plane.h"
 # include "intersect.h"
 # include <unistd.h>
@@ -43,10 +42,10 @@
 # define CYLINDER 3
 
 // Window and keyboard
-# define WIDTH 480
-# define HEIGHT 360
+# define WIDTH 800
+# define HEIGHT 600
 # define ESC_KEY 53
-
+# define EPSILON 0.000001
 //Colors
 # define COL_ST 0x75E555
 # define COL_FIN 0xE8811A
@@ -90,12 +89,6 @@ typedef struct s_vars
 	t_light		*light;
 	float		dist;
 	void		*nearest_obj;
-//	t_plane		*plane;
-//	int 		plane_num;
-//	t_sph		*sph;
-//	int 		sph_num;
-//	t_cyl		*cyl;
-//	int 		cyl_num;
 }				t_vars;
 //PARSING
 
@@ -116,7 +109,6 @@ typedef struct s_camera
 	t_vec		*nv_direction;
 	int			fov;
 }				t_camera;
-
 
 typedef struct s_light
 {
@@ -177,17 +169,18 @@ typedef struct s_vplane
 typedef struct s_flist
 {
 	void		*content;
-	int 		type;
+	int			type;
 	t_flist		*next;
 }				t_flist;
 
-//typedef struct s_scene
-//{
-//	t_camera	*camera;
-//	t_sph		*sphere;
-//	float		width;
-//	float		height;
-//}				t_scene;
+typedef struct s_intersect
+{
+	t_vec		*norm;
+	t_vec		*point;
+	float		dist;
+	int			type;
+	void		*figure;
+}				t_inter;
 
 //Parser
 
@@ -216,14 +209,13 @@ t_light		*new_light(void);
 t_plane		*new_plane(void);
 t_sph		*new_sphere(void);
 t_cyl		*new_cylinder(void);
-//t_scene		*new_scene(t_camera *cam, t_sph *sphere);
 void		free_amb(t_amb *ambient);
 void		free_camera(t_camera *camera);
 void		free_light(t_light *light);
 void		free_plane(t_plane *plane);
 void		free_sphere(t_sph *sphere);
 void		free_cylinder(t_cyl *cyl);
-//void		free_scene(t_scene *scene);
+
 // UTILS
 
 int			close_win(int keycode);
@@ -239,22 +231,30 @@ void		raytrace(t_vars *vars, t_flist **figure);
 t_vplane	*get_view_plane(float width, float height, float fov);
 int			ft_pixel_color(t_vars *vars, t_vec *ray, t_flist **figure);
 float		get_dist(t_vars *vars, t_vec *ray, t_flist **figure);
-int			get_color(t_vars *vars, t_vec *phit);
-int			get_sphere_color(t_vars *vars, t_vec *phit);
-int			get_plane_color(t_vars *vars, t_vec *phit);
-int			get_cylinder_color(t_vars *vars, t_vec *phit);
-float		plane_intersect(t_camera *cam, t_vec *ray, t_plane *plane);
-float		sphere_intersect(t_camera *cam, t_vec *ray, t_sph *sphere);
-float		cylinder_intersect(t_camera *cam, t_vec *ray, t_cyl *cyl);
+int			get_color(t_vars *vars, t_inter *ret_inter, t_flist *figure);
+int			get_sphere_color(t_vars *vars, t_inter *ret_inter,
+				t_flist *figure_lst);
+int			get_plane_color(t_vars *vars, t_inter *ret_inter,
+				t_flist *figure_lst);
+int			get_cylinder_color(t_vars *vars, t_inter *ret_inter,
+				t_flist *figure_lst);
+float		plane_intersect(t_vec *ray_origin, t_vec *ray, t_plane *plane);
+float		sphere_intersect(t_vec *ray_origin, t_vec *ray, t_sph *sphere);
+float		cylinder_intersect(t_vec *ray_origin, t_vec *ray, t_cyl *cyl);
+t_vec		*get_point(t_vec *ray_origin, float dist, t_vec *ray_dir);
+t_vec		*cyl_normal(t_vec *point, t_cyl *cyl);
+t_vec		*sph_normal(t_vec *point, t_sph *sph);
+int			find_min_nbr(float	*arr, int size);
+t_flist		*find_node_lst(t_flist *figure_lst, int nbr);
+t_inter		*intersect(t_vec *ray, t_flist *figure_lst,
+				t_vec *ray_origin);
 
 // FIGURES LIST
-t_flist	*ft_flstnew(void *content, int type);
-void	ft_flstadd_front(t_flist **flst, t_flist *new);
-void	ft_flstadd_back(t_flist **flst, t_flist *new);
-int		ft_flstsize(t_flist *flst);
-t_flist	*ft_flstlast(t_flist *flst);
-//void	ft_flstdelone(t_flist *flst, void (*del)(void*));
-//void	ft_flstclear(t_flist **flst, void (*del)(void*));
+t_flist		*ft_flstnew(void *content, int type);
+void		ft_flstadd_front(t_flist **flst, t_flist *new);
+void		ft_flstadd_back(t_flist **flst, t_flist *new);
+int			ft_flstsize(t_flist *flst);
+t_flist		*ft_flstlast(t_flist *flst);
 
 //vector
 
@@ -267,5 +267,6 @@ float		vec_len(t_vec *vec);
 t_vec		*vec_sum(t_vec *vec1, t_vec *vec2);
 t_vec		*vec_subtraction(t_vec *vec1, t_vec *vec2);
 void		vec_mult(t_vec *vec, float num);
+void		print_vect(t_vec *vec, char *name);
 
 #endif 

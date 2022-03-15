@@ -17,8 +17,6 @@ void	parse_line(char *line, t_vars *vars, t_flist **figure)
 	int	i;
 
 	i = 0;
-	while (!ft_isalpha(line[i]))
-		i++;
 	if (line[i] == 'A')
 		parse_ambient(line, vars);
 	else if (line[i] == 'C')
@@ -36,10 +34,9 @@ void	parse_line(char *line, t_vars *vars, t_flist **figure)
 void	parser(char **argv, t_vars *vars, t_flist **figure)
 {
 	int		fd;
-	int		i;
 	char	*line;
 
-	figure = NULL;
+	*figure = NULL;
 	check_file_name(argv[1]);
 	fd = open(argv[1], O_RDONLY);
 	if (fd == -1)
@@ -47,7 +44,7 @@ void	parser(char **argv, t_vars *vars, t_flist **figure)
 		perror("parser");
 		exit(EXIT_FAILURE);
 	}
-	while ((i = get_next_line(fd, &line)))
+	while (get_next_line(fd, &line))
 	{
 		parse_line(line, vars, figure);
 		free(line);
